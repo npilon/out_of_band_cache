@@ -1,0 +1,13 @@
+syntax: glob
+*.pyc
+*~
+.svn
+build
+data
+dist
+*.swp
+*.db
+out_of_band_cache.egg-info/*
+.DS_Store
+*.log
+*.wpr
