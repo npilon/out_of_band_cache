@@ -14,6 +14,28 @@ class SubscriptableMock(pmock.Mock):
     def __getitem__(self, key):
         return self.mock__getitem__(key)
 
+class TestNamespace(dict):
+    def __init__(self):
+        self.creation_lock = NameLock(None, False)
+    
+    def acquire_read_lock(self):
+        pass
+    
+    def release_read_lock(self):
+        pass
+    
+    def acquire_write_lock(self):
+        pass
+    
+    def release_write_lock(self):
+        pass
+    
+    def get_creation_lock(self, key):
+        return self.creation_lock
+    
+    def set_value(self, key, value):
+        self[key] = value
+
 class TestValue(unittest.TestCase):
     def setUp(self):
         self.test_key = 'test_key'
@@ -36,68 +58,17 @@ class TestValue(unittest.TestCase):
     
     def testCreateNewValue(self):
         """Test creating a new value."""
-        mock_namespace = SubscriptableMock()
-        mock_namespace.expects(pmock.at_least_once()).acquire_read_lock()
-        mock_namespace.expects(pmock.at_least_once()).release_read_lock()
-        mock_namespace.expects(pmock.at_least_once()).has_key(
-            pmock.eq(self.test_key)).will(pmock.return_value(False))
-        mock_namespace.expects(pmock.once()).acquire_write_lock()
-        mock_namespace.expects(pmock.once()).release_write_lock()
-        create_lock = NameLock(None, False)
-        mock_namespace.expects(pmock.once()).get_creation_lock(
-            pmock.eq(self.test_key)).will(pmock.return_value(create_lock))
-        mock_namespace.expects(pmock.once()).method('set_value')
+        namespace = TestNamespace()
         def mock_create_func():
             return "new_value"
-        value = out_of_band_cache.Value(self.test_key, mock_namespace,
-                                        createfunc=mock_create_func).get_value()
-        self.assertEqual(value, 'new_value')
-        mock_namespace.verify()
-    
-    def testCreateNewValue(self):
-        """Test creating a new value."""
-        mock_namespace = SubscriptableMock()
-        mock_namespace.expects(pmock.at_least_once()).acquire_read_lock()
-        mock_namespace.expects(pmock.at_least_once()).release_read_lock()
-        mock_namespace.expects(pmock.at_least_once()).has_key(
-            pmock.eq(self.test_key)).will(pmock.return_value(False))
-        mock_namespace.expects(pmock.once()).acquire_write_lock()
-        mock_namespace.expects(pmock.once()).release_write_lock()
-        create_lock = NameLock(None, False)
-        mock_namespace.expects(pmock.once()).get_creation_lock(
-            pmock.eq(self.test_key)).will(pmock.return_value(create_lock))
-        mock_namespace.expects(pmock.once()).method('set_value')
-        def mock_create_func():
-            return "new_value"
-        value = out_of_band_cache.Value(self.test_key, mock_namespace,
-                                        createfunc=mock_create_func).get_value()
-        self.assertEqual(value, 'new_value')
-        mock_namespace.verify()
+        value = out_of_band_cache.Value(self.test_key, namespace,
+                                        createfunc=mock_create_func)
+        self.assertRaises(out_of_band_cache.NewValueInProgressException,
+                          value.get_value)
+        self.assertEqual(value.get_value(), 'new_value')
     
     def testReplaceExistingValue(self):
         """Test replacing an existing value."""
-        class TestNamespace(dict):
-            def __init__(self):
-                self.creation_lock = NameLock(None, False)
-            
-            def acquire_read_lock(self):
-                pass
-            
-            def release_read_lock(self):
-                pass
-            
-            def acquire_write_lock(self):
-                pass
-            
-            def release_write_lock(self):
-                pass
-            
-            def get_creation_lock(self, key):
-                return self.creation_lock
-            
-            def set_value(self, key, value):
-                self[key] = value
-                
         def mock_create_func():
             return "new_value"
         namespace = TestNamespace()
