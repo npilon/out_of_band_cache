@@ -7,10 +7,18 @@ Since beaker's models are (? - if they weren't, Pylons couldn't use them, yes?)
 inherently thread-safe, this is very convenient."""
 
 import threading
+import logging
 
 import beaker.cache
 import beaker.middleware
 import beaker.container
+
+logger = logging.getLogger(__name__)
+if logger.isEnabledFor(logging.DEBUG):
+    debug = logger.debug
+else:
+    def debug(message, *args):
+        pass
 
 class CacheMiddlewear(beaker.middleware.CacheMiddleware):
     pass
@@ -42,7 +50,7 @@ class Value(beaker.container.Value):
                 raise KeyError(self.key)
         finally:
             self.namespace.release_read_lock()
-
+        
         # No value or expired value; attempt to get the create lock.
         has_createlock = False
         creation_lock = self.namespace.get_creation_lock(self.key)
@@ -82,7 +90,7 @@ class Value(beaker.container.Value):
                     v = self.createfunc()
                     self.set_value(v)
                     creation_lock.release()
-                update_thread = threading.Thread(do_update)
+                update_thread = threading.Thread(target=do_update)
                 update_thread.start()
                 create_thread_spawned.wait()
                 return value
