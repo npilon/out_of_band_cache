@@ -20,6 +20,7 @@ setup(name='out_of_band_cache',
       install_requires=[
           # -*- Extra requirements: -*-
           'beaker',
+          'pmock',
       ],
       entry_points="""
       # -*- Entry points: -*-
