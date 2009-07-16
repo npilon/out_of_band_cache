@@ -25,13 +25,12 @@ else:
 error = logger.error
 
 class SingleEntryQueue(Queue):
-    """Queue implementation that only allows for one item to be in the Queue at a time"""
+    """Queue implementation that only allows for one ``item'' to be in the Queue at a time"""
     
     def _put(self, item):
         if item not in self.queue:
             self.queue.append(item)
 
-            
 class Update(object):
     def __init__(self, update_for, job):
         self.update_for = update_for
