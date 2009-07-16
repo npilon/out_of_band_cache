@@ -154,6 +154,7 @@ def update_processor(queue):
         debug('Running update for %s', update.update_for)
         try:
             update.job()
+            queue.task_done()
         except Exception, e:
             error("Exception while loading %s: %r", update.update_for, e)
             debug(''.join(traceback.format_exception(*sys.exc_info())))
