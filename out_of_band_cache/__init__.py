@@ -33,9 +33,9 @@ class SingleEntryQueue(Queue):
 
             
 class Update(object):
-    def __init__(self, update_for, callback):
+    def __init__(self, update_for, job):
         self.update_for = update_for
-        self.callback = callback
+        self.job = job
     def __hash__(self):
         return hash(self.update_for)
     def __eq__(self, other):
@@ -151,9 +151,9 @@ def update_processor(queue):
     error('Started update processor.')
     while True:
         update = queue.get()
+        debug('Running update for %s', update.update_for)
         try:
-            debug('Running update for %s', update.update_for)
-            update.callback()
+            update.job()
         except Exception, e:
             error("Exception while loading %s: %r", update.update_for, e)
             debug(''.join(traceback.format_exception(*sys.exc_info())))
