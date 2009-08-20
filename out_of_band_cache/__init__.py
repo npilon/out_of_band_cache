@@ -11,6 +11,8 @@ import logging
 from Queue import Queue, Empty
 import sys
 import traceback
+from datetime import timedelta
+import time
 
 import beaker.cache
 import beaker.middleware
@@ -22,7 +24,6 @@ if logger.isEnabledFor(logging.DEBUG):
 else:
     def debug(message, *args):
         pass
-error = logger.error
 
 class SingleEntryQueue(Queue):
     """Queue implementation that only allows for one ``item'' to be in the Queue at a time"""
@@ -90,6 +91,15 @@ class Cache(beaker.cache.Cache):
         kw.setdefault('starttime', self.starttime)
         
         return Value(key, self.namespace, self.queue, **kw)
+    
+    def entry_age(self, key):
+        """The age of an entry as a timedelta."""
+        value = self._get_value(key)
+        if not value.has_current_value():
+            return None
+        if value.starttime is not None and value.storedtime < value.starttime:
+            return None # Value hasn't been stored yet.
+        return timedelta(seconds=int(time.time() - value.storedtime))
 
 class NewValueInProgressException(Exception):
     """Raised when a request is made for a value we don't have in the cache."""
@@ -147,7 +157,7 @@ class Value(beaker.container.Value):
             raise NewValueInProgressException()
 
 def update_processor(queue):
-    error('Started update processor.')
+    logger.info('Started update processor.')
     while True:
         update = queue.get()
         debug('Running update for %s', update.update_for)
@@ -155,5 +165,5 @@ def update_processor(queue):
             update.job()
             queue.task_done()
         except Exception, e:
-            error("Exception while loading %s: %r", update.update_for, e)
+            logger.error("Exception while loading %s: %r", update.update_for, e)
             debug(''.join(traceback.format_exception(*sys.exc_info())))
