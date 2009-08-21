@@ -95,8 +95,7 @@ class Cache(beaker.cache.Cache):
     def entry_age(self, key):
         """The age of an entry as a timedelta."""
         value = self._get_value(key)
-        if not value.has_current_value():
-            return None
+        value.has_current_value()
         if value.starttime is not None and value.storedtime < value.starttime:
             return None # Value hasn't been stored yet.
         return timedelta(seconds=int(time.time() - value.storedtime))
