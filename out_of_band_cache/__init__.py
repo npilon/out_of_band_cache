@@ -56,9 +56,10 @@ class CacheManager(beaker.cache.CacheManager):
         self.caches = beaker_cache_manager.caches
         self.regions = beaker_cache_manager.regions
         self.queue = SingleEntryQueue()
-        update_thread = threading.Thread(target=update_processor,
-                                         kwargs={'queue': self.queue,},)
-        update_thread.start()
+        for worker in range(int(self.kwargs.get('num_workers', '1'))):
+            update_thread = threading.Thread(target=update_processor,
+                                             kwargs={'queue': self.queue,},)
+            update_thread.start()
     
     def get_cache(self, name, out_of_band=False, **kwargs):
         if not out_of_band:
