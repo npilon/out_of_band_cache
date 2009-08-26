@@ -95,11 +95,19 @@ class Cache(beaker.cache.Cache):
     
     def entry_age(self, key):
         """The age of an entry as a timedelta."""
-        value = self._get_value(key)
-        value.has_current_value()
-        if value.starttime is not None and value.storedtime < value.starttime:
-            return None # Value hasn't been stored yet.
-        return timedelta(seconds=int(time.time() - value.storedtime))
+        for server in self.namespace.mc.servers:
+            server.debuglog = lambda str: logger.debug("MemCached: %s\n", str)
+        self.namespace.acquire_read_lock()
+        try:
+            if not self.namespace.has_key(key):
+                logger.warning('Namespace %s does not have key: %s', self.namespace.namespace, key)
+                return None # Value hasn't been stored yet.
+            storedtime, expiretime, value = self.namespace[key]
+            age = timedelta(seconds=int(time.time() - storedtime))
+            logger.debug('Namespace %s has key %s with age %s', self.namespace.namespace, key, age)
+            return age
+        finally:
+            self.namespace.release_read_lock()
 
 class NewValueInProgressException(Exception):
     """Raised when a request is made for a value we don't have in the cache."""
