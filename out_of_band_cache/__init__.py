@@ -95,8 +95,8 @@ class Cache(beaker.cache.Cache):
     
     def entry_age(self, key):
         """The age of an entry as a timedelta."""
-        for server in self.namespace.mc.servers:
-            server.debuglog = lambda str: logger.debug("MemCached: %s\n", str)
+        #for server in self.namespace.mc.servers:
+            #server.debuglog = lambda str: logger.debug("MemCached: %s\n", str)
         self.namespace.acquire_read_lock()
         try:
             if not self.namespace.has_key(key):
