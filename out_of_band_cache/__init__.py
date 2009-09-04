@@ -77,9 +77,10 @@ class CacheManager(beaker.cache.CacheManager):
         return self.caches.setdefault(name + str(kw), Cache(name, self.queue, **kw))
 
 class Cache(beaker.cache.Cache):
-    def __init__(self, name, queue, **kw):
+    def __init__(self, name, queue, maximum_update_time=None, **kw):
         super(Cache, self).__init__(name, **kw)
         self.queue = queue
+        self.maximum_update_time = maximum_update_time
     
     def _get_value(self, key, **kw):
         if isinstance(key, unicode):
@@ -91,7 +92,8 @@ class Cache(beaker.cache.Cache):
         kw.setdefault('expiretime', self.expiretime)
         kw.setdefault('starttime', self.starttime)
         
-        return Value(key, self.namespace, self.queue, **kw)
+        return Value(key, self.namespace, self.queue,
+                     maximum_update_time=self.maximum_update_time, **kw)
     
     def entry_age(self, key):
         """The age of an entry as a timedelta."""
@@ -102,7 +104,11 @@ class Cache(beaker.cache.Cache):
             if not self.namespace.has_key(key):
                 logger.warning('Namespace %s does not have key: %s', self.namespace.namespace, key)
                 return None # Value hasn't been stored yet.
-            storedtime, expiretime, value = self.namespace[key]
+            value = self.namespace[key]
+            if len(value) == 3:
+                storedtime, expiretime, value = value
+            else:
+                storedtime, expiretime, in_progress, value = value
             age = timedelta(seconds=int(time.time() - storedtime))
             logger.debug('Namespace %s has key %s with age %s', self.namespace.namespace, key, age)
             return age
@@ -115,10 +121,11 @@ class NewValueInProgressException(Exception):
 
 class Value(beaker.container.Value):
     """A Value that will still return - but allows querying on - expired keys."""
-    def __init__(self, key, namespace, queue, **kw):
+    def __init__(self, key, namespace, queue, maximum_update_time=None, **kw):
         super(Value, self).__init__(key, namespace, **kw)
         self.queue = queue
         self.update_in_progress = None
+        self.maximum_update_time = maximum_update_time
     
     def get_value(self):
         # Attempt to read the value out of the store.
@@ -155,8 +162,11 @@ class Value(beaker.container.Value):
         finally:
             self.namespace.release_read_lock()
 
-        debug('Update in Progress: %s', self.update_in_progress)
-        if not self.update_in_progress:
+        debug('Update in Progress: %s, maximum update time: %s',
+              self.update_in_progress, self.maximum_update_time)
+        if not self.update_in_progress or\
+           (self.maximum_update_time and\
+            time.time() - self.update_in_progress > self.maximum_update_time):
             debug("get_value creating new value")
             # Return the current value and spawn a thread to update it.
             def do_update():
@@ -183,7 +193,10 @@ class Value(beaker.container.Value):
         try:
             self.storedtime = time.time()
             debug("set_value stored time %r expire time %r", self.storedtime, self.expire_argument)
-            self.namespace.set_value(self.key, (self.storedtime, self.expire_argument, False, value))
+            self.namespace.set_value(self.key, (self.storedtime, self.expire_argument, None, value))
+        except Exception, e:
+            print e
+            raise
         finally:
             self.namespace.release_write_lock()
     
@@ -191,8 +204,9 @@ class Value(beaker.container.Value):
         """Start running an update with some current value."""
         self.namespace.acquire_write_lock()
         try:
-            debug("start_update stored time %r expire time %r", self.storedtime, self.expire_argument)
-            self.namespace.set_value(self.key, (self.storedtime, self.expire_argument, True, value))
+            self.update_in_progress = time.time()
+            debug("start_update %s stored time %r expire time %r", self.update_in_progress, self.storedtime, self.expire_argument)
+            self.namespace.set_value(self.key, (self.storedtime, self.expire_argument, self.update_in_progress, value))
         finally:
             self.namespace.release_write_lock()
 
