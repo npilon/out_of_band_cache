@@ -118,10 +118,12 @@ class Value(beaker.container.Value):
     def __init__(self, key, namespace, queue, **kw):
         super(Value, self).__init__(key, namespace, **kw)
         self.queue = queue
+        self.update_in_progress = None
     
     def get_value(self):
         # Attempt to read the value out of the store.
         self.namespace.acquire_read_lock()
+        value = None
         try:
             has_value = self.has_value()
             if has_value:
@@ -153,16 +155,46 @@ class Value(beaker.container.Value):
         finally:
             self.namespace.release_read_lock()
 
-        debug("get_value creating new value")
-        # Return the current value and spawn a thread to update it.
-        def do_update():
-            v = self.createfunc()
-            self.set_value(v)
-        self.queue.put(Update(self.key, do_update))
-        if has_value:
+        debug('Update in Progress: %s', self.update_in_progress)
+        if not self.update_in_progress:
+            debug("get_value creating new value")
+            # Return the current value and spawn a thread to update it.
+            def do_update():
+                self.start_update(value)
+                v = self.createfunc()
+                self.set_value(v)
+            self.queue.put(Update(self.key, do_update))
+        if has_value and value is not None:
             return value
+        raise NewValueInProgressException()
+    
+    def _Value__get_value(self):
+        """__get_value that supports update_in_progress."""
+        value = self.namespace[self.key]
+        if len(value) == 4:
+            self.storedtime, self.expiretime, self.update_in_progress, value = value
         else:
-            raise NewValueInProgressException()
+            self.storedtime, self.expiretime, value = value
+        return value
+    
+    def set_value(self, value):
+        """set_value with added in_progress handling."""
+        self.namespace.acquire_write_lock()
+        try:
+            self.storedtime = time.time()
+            debug("set_value stored time %r expire time %r", self.storedtime, self.expire_argument)
+            self.namespace.set_value(self.key, (self.storedtime, self.expire_argument, False, value))
+        finally:
+            self.namespace.release_write_lock()
+    
+    def start_update(self, value):
+        """Start running an update with some current value."""
+        self.namespace.acquire_write_lock()
+        try:
+            debug("start_update stored time %r expire time %r", self.storedtime, self.expire_argument)
+            self.namespace.set_value(self.key, (self.storedtime, self.expire_argument, True, value))
+        finally:
+            self.namespace.release_write_lock()
 
 def update_processor(queue):
     logger.info('Started update processor.')
