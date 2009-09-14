@@ -170,10 +170,10 @@ class Value(beaker.container.Value):
             debug("get_value creating new value")
             # Return the current value and spawn a thread to update it.
             def do_update():
-                self.start_update(value)
                 v = self.createfunc()
                 self.set_value(v)
             self.queue.put(Update(self.key, do_update))
+            self.start_update(value)
         if has_value and value is not None:
             return value
         raise NewValueInProgressException()
