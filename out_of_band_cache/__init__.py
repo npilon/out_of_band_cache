@@ -81,6 +81,8 @@ class Cache(beaker.cache.Cache):
         super(Cache, self).__init__(name, **kw)
         self.queue = queue
         self.maximum_update_time = maximum_update_time
+        if self.maximum_update_time:
+            self.maximum_update_time = int(self.maximum_update_time)
     
     def _get_value(self, key, **kw):
         if isinstance(key, unicode):
@@ -162,7 +164,7 @@ class Value(beaker.container.Value):
         finally:
             self.namespace.release_read_lock()
 
-        debug('Update in Progress: %s, maximum update time: %s',
+        debug('Update in Progress: %r, maximum update time: %r',
               self.update_in_progress, self.maximum_update_time)
         if not self.update_in_progress or\
            (self.maximum_update_time and\
