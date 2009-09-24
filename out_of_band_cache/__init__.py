@@ -222,4 +222,4 @@ def update_processor(queue):
             queue.task_done()
         except Exception, e:
             logger.error("Exception while loading %s: %r", update.update_for, e)
-            debug(''.join(traceback.format_exception(*sys.exc_info())))
+            logger.error(''.join(traceback.format_exception(*sys.exc_info())))
