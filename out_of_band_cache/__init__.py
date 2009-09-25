@@ -6,17 +6,18 @@ a replacement can be generated and stored.
 Since beaker's models are (? - if they weren't, Pylons couldn't use them, yes?)
 inherently thread-safe, this is very convenient."""
 
-import threading
+from datetime import timedelta
 import logging
+import os
 from Queue import Queue, Empty
 import sys
-import traceback
-from datetime import timedelta
+import threading
 import time
+import traceback
 
 import beaker.cache
-import beaker.middleware
 import beaker.container
+import beaker.middleware
 
 logger = logging.getLogger(__name__)
 if logger.isEnabledFor(logging.DEBUG):
@@ -198,7 +199,7 @@ class Value(beaker.container.Value):
             self.namespace.set_value(self.key, (self.storedtime, self.expire_argument, None, value))
         except Exception, e:
             print e
-            raise
+            raisProcessIDe
         finally:
             self.namespace.release_write_lock()
     
@@ -213,13 +214,22 @@ class Value(beaker.container.Value):
             self.namespace.release_write_lock()
 
 def update_processor(queue):
-    logger.info('Started update processor.')
+    log_prefix = '%(pid)s.%(thread)s' % dict(
+        pid=os.getpid(), thread=threading.currentThread().getName())
+    logger.info('%s: Started update processor.', log_prefix)
     while True:
         update = queue.get()
-        debug('Running update for %s', update.update_for)
+        logger.info('%s: Running update for %s. Queue length: %d', log_prefix,
+             update.update_for, queue.qsize())
+        start_time = time.time()
         try:
             update.job()
             queue.task_done()
+            logger.info('%s: Finished update for %s. Took %d seconds, Queue length: %d',
+                 log_prefix, update.update_for, time.time() - start_time,
+                 queue.qsize())
         except Exception, e:
-            logger.error("Exception while loading %s: %r", update.update_for, e)
-            logger.error(''.join(traceback.format_exception(*sys.exc_info())))
+            logger.error("%s: Exception while loading %s: %r",
+                         log_prefix, update.update_for, e)
+            logger.error("%s: %s", log_prefix,
+                         ''.join(traceback.format_exception(*sys.exc_info())))
