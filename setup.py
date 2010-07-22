@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '0.6'
+version = '0.7'
 
 setup(name='out_of_band_cache',
       version=version,
@@ -21,7 +21,10 @@ setup(name='out_of_band_cache',
           # -*- Extra requirements: -*-
           'beaker>=1.5.4dev',
           'pmock',
+	  'redis',
       ],
       entry_points="""
+          [beaker.backends]
+          ext:redis = out_of_band_cache.redis_manager:RedisNamespaceManager
       """,
       )
