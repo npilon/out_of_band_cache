@@ -14,7 +14,7 @@ class RedisNamespaceManager(NamespaceManager):
     def __init__(self, namespace, host='localhost', port=6379, db=0, password=None,
                  **params):
         NamespaceManager.__init__(self, namespace)
-        self.redis_options = dict(host=host, port=port, db=db, password=password)
+        self.redis_options = dict(host=host, port=int(port), db=int(db), password=password)
         self._redis = threading.local()
     
     @property
