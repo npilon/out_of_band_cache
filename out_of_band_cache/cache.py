@@ -1,10 +1,9 @@
 """Implements a beaker cache replacement that does out-of-band updates.
 
 When a value expires, the cache will continue to return the expired value until
-a replacement can be generated and stored.
+a replacement can be generated and stored."""
 
-Since beaker's models are (? - if they weren't, Pylons couldn't use them, yes?)
-inherently thread-safe, this is very convenient."""
+__all__ = ['NewValueInProgressException', 'CacheMiddleware', 'CacheManager']
 
 from datetime import timedelta
 import logging
@@ -20,14 +19,16 @@ import beaker.container
 import beaker.middleware
 import beaker.exceptions
 
-from out_of_band_cache import NewValueInProgressException
-
 logger = logging.getLogger(__name__)
 if logger.isEnabledFor(logging.DEBUG):
     debug = logger.debug
 else:
     def debug(message, *args):
         pass
+
+class NewValueInProgressException(Exception):
+    """Raised when a request is made for a value we don't have in the cache."""
+    pass
 
 class SingleEntryQueue(Queue):
     """Queue implementation that only allows for one ``item'' to be in the Queue at a time"""
@@ -50,6 +51,9 @@ class Update(object):
                                                     self.update_for)
 
 class CacheMiddleware(beaker.middleware.CacheMiddleware):
+    """Cache middleware that can use an out-of-band cache instead of a regular
+    cache. To use an out-of-band cache, pass out_of_band = True to calls to
+    get_cache."""
     def __init__(self, *args, **kwargs):
         super(CacheMiddleware, self).__init__(*args, **kwargs)
         self.cache_manager = CacheManager(self.cache_manager)

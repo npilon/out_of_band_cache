@@ -11,6 +11,13 @@ import pickle
 import redis
 
 class RedisNamespaceManager(NamespaceManager):
+    """A beaker extension for redis that actually works.
+    
+    Takes arguments to redis in addition to normal namespace manager arguments.
+    For example:
+    
+    beaker.cache.host = a.host.name
+    beaker.cache.db=4"""
     def __init__(self, namespace, host='localhost', port=6379, db=0, password=None,
                  **params):
         NamespaceManager.__init__(self, namespace)

@@ -12,7 +12,9 @@ import routes.util
 log = logging.getLogger(__name__)
 
 def render_from_cache(f, rendering_action):
-    """"""
+    """decorator. Render f using an out-of-band cache to regenerate the cached
+    copy. If no cached copy is available, use rendering_action to display
+    something in the meantime. If caching is disabled, just invoke f directly."""
     
     def _render_from_cache(action, self, *args, **kwargs):
         context = dict(
