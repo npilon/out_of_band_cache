@@ -37,7 +37,14 @@ class RedisNamespaceManager(NamespaceManager):
         return self.namespace + '_' + key.replace(' ', '\302\267')
 
     def __getitem__(self, key):
-        return pickle.loads(self.redis.get(self._format_key(key)))
+        try:
+            value = self.redis.get(self._format_key(key))
+            if value is not None:
+                return pickle.loads(value)
+            else:
+                raise KeyError
+        except:
+            raise KeyError
 
     def __contains__(self, key):
         value = self.redis.get(self._format_key(key))
