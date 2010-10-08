@@ -5,7 +5,7 @@ version = '0.9'
 
 setup(name='out_of_band_cache',
       version=version,
-      description="A beaker cache extension that supports out of band updates.",
+      description="A beaker cache extension that supports out of band updates. Also includes Redis Cache Manager.",
       long_description="""\
 """,
       classifiers=[], # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
