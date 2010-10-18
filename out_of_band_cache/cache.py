@@ -118,7 +118,10 @@ class Cache(beaker.cache.Cache):
             if not self.namespace.has_key(key):
                 logger.warning('Namespace %s does not have key: %s', self.namespace.namespace, key)
                 return None # Value hasn't been stored yet.
-            value = self.namespace[key]
+            try:
+                value = self.namespace[key]
+            except KeyError:
+                return None # Value has problems.
             if len(value) == 3:
                 storedtime, expiretime, value = value
             else:
